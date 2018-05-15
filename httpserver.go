@@ -9,6 +9,46 @@ import (
 
 // Server helps reduce boilerplate when writing tools that center around
 // an http.Server instance.
+//
+// For example, to create a standalone server that can bind to a command-line
+// configurable address (e.g.)
+//  ./server -address=":80"
+// Use something like the following:
+//  package main
+//  import (
+//  	"flag"
+//  	"log"
+//  	"os"
+//  	"os/signal"
+//  	"syscall"
+//  	"github.com/jeremyot/httpserver"
+//  	"github.com/jeremyot/structflag"
+//  )
+//  func monitorSignal(s *httpserver.Server, sigChan <-chan os.Signal) {
+//  	sig := <-sigChan
+//  	log.Printf("Exiting (%s)...", sig)
+//  	select {
+//  	case <-s.Stop():
+//  		return
+//  	case <-sigChan:
+//  		log.Printf("Force quitting (%s)...", sig)
+//  		os.Exit(-1)
+//  	}
+//  }
+//  type ServerConfig struct {
+//  	Address string `json:"address" flag:"address,The address to bind to,[::]:8080"`
+//  }
+//  func main() {
+//  	var serverConfig ServerConfig
+//  	structflag.StructToFlags("", &serverConfig)
+//  	flag.Parse()
+//  	sigChan := make(chan os.Signal)
+//  	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGQUIT)
+//  	s := httpserver.New(http.NewServeMux().ServeHTTP)
+//  	go monitorSignal(s, sigChan)
+//  	s.Start(serverConfig.Address)
+//  	<-s.Wait()
+//  }
 type Server struct {
 	quit            chan struct{}
 	wait            chan struct{}
