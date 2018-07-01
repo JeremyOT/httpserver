@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"context"
+	"crypto/tls"
 	"log"
 	"net"
 	"net/http"
@@ -50,12 +51,15 @@ import (
 //  	<-s.Wait()
 //  }
 type Server struct {
+	TLSConfig       *tls.Config
 	quit            chan struct{}
 	wait            chan struct{}
 	started         chan struct{}
 	handlerFunc     http.HandlerFunc
 	address         net.Addr
 	server          *http.Server
+	tlsConfig       *tls.Config
+	DisableHTTP2    bool
 	shutdownHandler func()
 }
 
@@ -86,8 +90,16 @@ func (s *Server) run(listener net.Listener) {
 		}
 	}()
 	s.server = &http.Server{Handler: http.HandlerFunc(s.handlerFunc)}
+	if s.DisableHTTP2 {
+		s.server.TLSNextProto = make(map[string]func(*http.Server, *tls.Conn, http.Handler))
+	}
 	defer s.server.Shutdown(context.Background())
-	go s.server.Serve(listener)
+	if s.TLSConfig != nil {
+		s.server.TLSConfig = s.TLSConfig
+		go s.server.ServeTLS(listener, "", "")
+	} else {
+		go s.server.Serve(listener)
+	}
 	log.Println("Listening for requests on", s.Address())
 	close(s.started)
 	<-s.quit
