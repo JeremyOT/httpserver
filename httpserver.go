@@ -58,8 +58,8 @@ type Server struct {
 	handlerFunc     http.HandlerFunc
 	address         net.Addr
 	server          *http.Server
-	tlsConfig       *tls.Config
 	DisableHTTP2    bool
+	listening       bool
 	shutdownHandler func()
 }
 
@@ -117,8 +117,14 @@ func (s *Server) Start(address string) (err error) {
 		return err
 	}
 	s.address = listener.Addr()
+	s.listening = true
 	go s.run(listener)
 	return nil
+}
+
+// IsListening returns true if the server is running
+func (s *Server) IsListening() bool {
+	return s.listening
 }
 
 // WaitForStart returns a channel that is closed when the Server has finished
@@ -135,6 +141,7 @@ func (s *Server) Wait() <-chan struct{} {
 // Stop gracefully shuts down the Server and returns the channel from Wait.
 // Note that it has the same limitations as http.Server.Shutdown.
 func (s *Server) Stop() <-chan struct{} {
+	s.listening = false
 	close(s.quit)
 	return s.Wait()
 }

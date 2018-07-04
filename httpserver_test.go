@@ -18,11 +18,17 @@ func TestServeStop(t *testing.T) {
 	if err := server.Start("---"); err == nil {
 		t.Fatal("Expected failure on bad address")
 	}
+	if server.IsListening() {
+		t.Fatal("Server should not be running")
+	}
 	server.Start("")
 	server.SetShutdownHandler(func() {
 		close(shutdownChannel)
 	})
 	<-server.WaitForStart()
+	if !server.IsListening() {
+		t.Fatal("Server should be running")
+	}
 	addr := server.Address()
 	response, err := http.Get(fmt.Sprintf("http://%s/test-path", addr))
 	if err != nil {
@@ -48,6 +54,9 @@ func TestServeStop(t *testing.T) {
 	case <-shutdownChannel:
 	case <-time.After(time.Microsecond):
 		t.Fatal("Shutdown not closed after shutdown")
+	}
+	if server.IsListening() {
+		t.Fatal("Server should not be running")
 	}
 	_, err = http.Get(fmt.Sprintf("http://%s/closed", addr))
 	if err == nil {
